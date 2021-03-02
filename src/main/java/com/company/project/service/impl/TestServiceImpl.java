@@ -16,7 +16,5 @@ import javax.annotation.Resource;
 @Service
 @Transactional
 public class TestServiceImpl extends AbstractService<Test> implements TestService {
-    @Resource
-    private TestMapper testMapper;
 
 }

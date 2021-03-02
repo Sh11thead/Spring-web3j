@@ -17,6 +17,8 @@ public class Web3JHelper {
 
   public static void main(String[] args) throws Exception {
     String result = HttpHelper.post("https://graph.fixed.finance/subgraphs/name/fixed/fixed-protocol1",GQL_DEPOSITS.replaceAll("DPOOLMARK","0x52e2de5fccf3385748de4f76bf7d98d4ae647813"));
+   // String result = HttpHelper.post("https://api.thegraph.com/subgraphs/name/bacon-labs/eighty-eight-mph-staging",GQL_DEPOSITS.replaceAll("DPOOLMARK","0x35966201a7724b952455b73a36c8846d8745218e"));
+
     JSONObject jsonObject = JSON.parseObject(result);
     String moneyMarketIncomeIndex = jsonObject.getJSONObject("data").getJSONObject("dpool").getString("moneyMarketIncomeIndex");
     JSONArray deposits = jsonObject.getJSONObject("data").getJSONObject("dpool").getJSONArray("deposits");
@@ -27,13 +29,16 @@ public class Web3JHelper {
     for(int i=0;i<deposits.size();i++){
       JSONObject cube = deposits.getJSONObject(i);
       boolean active = cube.getBoolean("active");
+      if(i<=2)
+        continue;
       if(active){
+
         String amount = cube.getString("amount");
         String initialMoneyMarketIncomeIndex = cube.getString("initialMoneyMarketIncomeIndex");
         String interestEarned = cube.getString("interestEarned");
         BigDecimal s = surPlusCal(interestEarned,amount,moneyMarketIncomeIndex,initialMoneyMarketIncomeIndex);
         res = res.add(s);
-        System.out.println(cube.getString("nftID")+" surplus is "+s.toPlainString());
+        System.out.println(cube.getString("nftID")+" surplus is "+s.toPlainString()+" total is"+res.toPlainString());
       }else {
         System.out.println(cube.getString("nftID")+" is not active");
 
@@ -78,15 +83,13 @@ public class Web3JHelper {
 
   public static BigDecimal surPlusCal(String earned,String amount,String currentIndex,String initialMoneyMarketIncomeIndex){
     BigDecimal relax = new BigDecimal(currentIndex).divide(new BigDecimal(initialMoneyMarketIncomeIndex),18,RoundingMode.HALF_UP);
-    BigDecimal boomed = relax.multiply(new BigDecimal(amount));
+    BigDecimal boomed = relax.multiply(new BigDecimal(amount)).subtract(new BigDecimal(amount));
     BigDecimal surplus = boomed.subtract(new BigDecimal(earned));
     return surplus;
   }
 
 
 
-  private static BigDecimal div(BigInteger a,BigInteger b){
-    return new BigDecimal(a).divide(new BigDecimal(b),6, RoundingMode.HALF_UP);
-  }
+
 
 }
