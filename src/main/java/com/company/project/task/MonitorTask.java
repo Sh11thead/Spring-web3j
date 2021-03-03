@@ -1,17 +1,24 @@
 package com.company.project.task;
 
+import static com.company.project.Web3JHelper.surPlusCal;
 import static com.company.project.configurer.BaseConf.GQL_BLOCK;
+import static com.company.project.configurer.BaseConf.GQL_DEPOSITS;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.company.project.configurer.BaseConf;
 import com.company.project.configurer.HttpHelper;
+import com.company.project.gen.CompoundERC20Market;
+import com.company.project.gen.DInterest;
+import com.company.project.gen.ICERC20;
 import com.company.project.gen.UniswapPair;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -104,6 +111,60 @@ public class MonitorTask {
       log.error("cannot get price from node",e);
     }
 
+    //Markets
+
+    try{
+      Map<String,String> dInterestMap  = baseConf.getDInterestMap();
+      for(String marketName:dInterestMap.keySet()){
+        String address = dInterestMap.get(marketName);
+        result = HttpHelper.post(baseConf.getGraphNodeAddr(),GQL_DEPOSITS.replaceAll("DPOOLMARK",address));
+        jsonObject = JSON.parseObject(result);
+        String moneyMarketIncomeIndex = jsonObject.getJSONObject("data").getJSONObject("dpool").getString("moneyMarketIncomeIndex");
+        JSONArray deposits = jsonObject.getJSONObject("data").getJSONObject("dpool").getJSONArray("deposits");
+
+        BigDecimal res = new BigDecimal("0");
+        for(int i=0;i<deposits.size();i++){
+          JSONObject cube = deposits.getJSONObject(i);
+          boolean active = cube.getBoolean("active");
+          if(active){
+            String amount = cube.getString("amount");
+            String initialMoneyMarketIncomeIndex = cube.getString("initialMoneyMarketIncomeIndex");
+            String interestEarned = cube.getString("interestEarned");
+            BigDecimal s = surPlusCal(interestEarned,amount,moneyMarketIncomeIndex,initialMoneyMarketIncomeIndex);
+            res = res.add(s);
+            log.info("Market {} nftId {} surplus is {}",marketName,cube.getString("nftID"),s.toPlainString());
+          }else {
+            log.info("Market {} nftId {} is closed",marketName,cube.getString("nftID"));
+          }
+        }
+        log.info("Market {} total surplus is {}",marketName,jsonObject.getJSONObject("data").getJSONObject("dpool").getString("surplus"));
+      }
+
+    }catch (Exception e){
+      log.error("error in graph node",e);
+    }
+
+
+    //Market cTokens
+
+    try{
+      Map<String,String> dInterestMap  = baseConf.getDInterestMap();
+      for(String marketName:dInterestMap.keySet()){
+        String address = dInterestMap.get(marketName);
+        DInterest dInterest = DInterest.load(address,web3j,BaseConf.me,BaseConf.gasProvider);
+        String marketAddr =  dInterest.moneyMarket().send();
+        CompoundERC20Market market = CompoundERC20Market.load(marketAddr,web3j,BaseConf.me,BaseConf.gasProvider);
+        ICERC20 icerc20 = ICERC20.load(market.cToken().send(),web3j,BaseConf.me,BaseConf.gasProvider);
+        BigInteger currCBal = icerc20.balanceOf(marketAddr).send();
+        BigInteger exRate = icerc20.exchangeRateStored().send();
+
+        log.info("Market {} total deposit value is {}",marketName,wmul(currCBal,exRate));
+        log.info("Market {} remote cash is {}",marketName,icerc20.getCash().send());
+        }
+    }catch (Exception e){
+      log.error("error in graph node",e);
+    }
+
 
   }
 
@@ -115,6 +176,10 @@ public class MonitorTask {
       log.info("block from fullNode: {}, block from graph: {} ,diff {} ",fromNode,fromGraph,diff);
     }
 
+  }
+
+  private static BigInteger wmul(BigInteger a,BigInteger b){
+    return a.multiply(b).divide(BigInteger.TEN.pow(18));
   }
 
   private static BigDecimal div(BigInteger a,BigInteger b){

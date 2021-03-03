@@ -1,5 +1,7 @@
 package com.company.project.configurer;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -41,4 +43,18 @@ public class BaseConf {
 
   @Value("${fix.vesting}")
   private String fixVesting;
+
+  @Value("${fix.DInterests}")
+  private String dInterests;
+
+
+
+  public Map<String,String> getDInterestMap(){
+    Map<String,String> ret = new LinkedHashMap<>();
+    for(String rpair:dInterests.split(",")){
+      String [] pairpart = rpair.split(":");
+      ret.put(pairpart[0],pairpart[1]);
+    }
+    return ret;
+  }
 }
