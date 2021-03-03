@@ -1,3 +1,4 @@
+/*
 package com.company.project.configurer;
 
 import com.github.pagehelper.PageHelper;
@@ -19,9 +20,11 @@ import java.util.Properties;
 
 import static com.company.project.core.ProjectConstant.*;
 
+*/
 /**
  * Mybatis & Mapper & PageHelper 配置
- */
+ *//*
+
 @Configuration
 public class MybatisConfigurer {
 
@@ -66,3 +69,4 @@ public class MybatisConfigurer {
 
 }
 
+*/

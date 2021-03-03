@@ -36,10 +36,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <dependency>
+<!--        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -61,12 +61,12 @@
             <version>23.0</version>
         </dependency>
         <!--MySQL JDBC驱动-->
-        <dependency>
+       <!-- <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!--MyBatis 及 插件依赖-->
+        &lt;!&ndash;MyBatis 及 插件依赖&ndash;&gt;
         <dependency>
             <groupId>org.mybatis</groupId>
             <artifactId>mybatis-spring</artifactId>
@@ -86,7 +86,7 @@
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper</artifactId>
             <version>4.2.1</version>
-        </dependency>
+        </dependency>-->
         <!--阿里 FastJson依赖-->
         <dependency>
             <groupId>com.alibaba</groupId>
@@ -94,11 +94,11 @@
             <version>1.2.47</version>
         </dependency>
         <!--阿里 Druid Spring Boot Starter依赖-->
-        <dependency>
+<!--        <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid-spring-boot-starter</artifactId>
             <version>1.1.10</version>
-        </dependency>
+        </dependency>-->
         <!--代码生成器依赖-->
         <dependency>
             <groupId>org.freemarker</groupId>

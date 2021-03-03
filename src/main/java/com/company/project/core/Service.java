@@ -1,3 +1,4 @@
+/*
 package com.company.project.core;
 
 import org.apache.ibatis.exceptions.TooManyResultsException;
@@ -5,9 +6,11 @@ import tk.mybatis.mapper.entity.Condition;
 
 import java.util.List;
 
+*/
 /**
  * Service 层 基础接口，其他Service 接口 请继承该接口
- */
+ *//*
+
 public interface Service<T> {
     void save(T model);//持久化
     void save(List<T> models);//批量持久化
@@ -20,3 +23,4 @@ public interface Service<T> {
     List<T> findByCondition(Condition condition);//根据条件查找
     List<T> findAll();//获取所有
 }
+*/
