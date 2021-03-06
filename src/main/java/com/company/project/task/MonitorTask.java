@@ -7,6 +7,7 @@ import static com.company.project.configurer.BaseConf.GQL_DEPOSITS;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.company.project.configurer.BaseConf;
 import com.company.project.configurer.HttpHelper;
 import com.company.project.gen.CompoundERC20Market;
@@ -17,9 +18,14 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,12 +44,15 @@ public class MonitorTask {
   @Autowired
   BaseConf baseConf;
 
+  Map<String,String> cacheMap = new LinkedHashMap<>();
+
+
   private String toJSONString(Object o){
     return JSONObject.toJSONString(o);
   }
 
 
-  @Scheduled(fixedDelay=10000L)
+  @Scheduled(fixedDelayString="${monitor.delay}")//30min
   public void monitor() {
 
     //blockNum
@@ -70,7 +79,9 @@ public class MonitorTask {
     try {
       UniswapPair uniswapPair = UniswapPair.load(baseConf.getFixPairAddress(),web3j,baseConf.me,baseConf.gasProvider);
       Tuple3<BigInteger, BigInteger, BigInteger> reserves = uniswapPair.getReserves().send();
-      log.info("FIX price is {}",div(reserves.component2(),reserves.component1()));
+      BigDecimal price = div(reserves.component2(),reserves.component1());
+      log.info("FIX price is {}",price);
+      setValue("FIX价格",price.toPlainString(),true);
     } catch (Exception e) {
       log.error("cannot get price from mdex",e);
     }
@@ -104,7 +115,11 @@ public class MonitorTask {
 
       BigInteger totalLock = sum(balanceMap);
       BigInteger totalCircle = totalSupply.subtract(totalLock);
+      BigDecimal percent = new BigDecimal(totalLock).multiply(new BigDecimal("100")).divide(new BigDecimal(totalSupply),2,RoundingMode.HALF_UP);
 
+      setValue("FIX锁仓量",div18(totalLock).toPlainString(),true);
+      setValue("FIX流通量",div18(totalCircle).toPlainString(),true);
+      setValue("FIX锁仓比例",percent+"%",true);
       log.info("FIX totalLock {} , total Circle {}",div18(totalLock),div18(totalCircle));
 
     }catch (Exception e){
@@ -123,6 +138,8 @@ public class MonitorTask {
         JSONArray deposits = jsonObject.getJSONObject("data").getJSONObject("dpool").getJSONArray("deposits");
 
         BigDecimal res = new BigDecimal("0");
+        List<SurplusDetail> surplusDetailList = new ArrayList<>();
+
         for(int i=0;i<deposits.size();i++){
           JSONObject cube = deposits.getJSONObject(i);
           boolean active = cube.getBoolean("active");
@@ -132,12 +149,22 @@ public class MonitorTask {
             String interestEarned = cube.getString("interestEarned");
             BigDecimal s = surPlusCal(interestEarned,amount,moneyMarketIncomeIndex,initialMoneyMarketIncomeIndex);
             res = res.add(s);
+            surplusDetailList.add(new SurplusDetail(cube.getString("nftID"),s.toPlainString()));
             log.info("Market {} nftId {} surplus is {}",marketName,cube.getString("nftID"),s.toPlainString());
           }else {
             log.info("Market {} nftId {} is closed",marketName,cube.getString("nftID"));
+           // surplusDetailList.add(new SurplusDetail(cube.getString("nftID"),"closed"));
           }
         }
-        log.info("Market {} total surplus is {}",marketName,jsonObject.getJSONObject("data").getJSONObject("dpool").getString("surplus"));
+
+        String surplus = jsonObject.getJSONObject("data").getJSONObject("dpool").getString("surplus");
+        log.info("Market {} total surplus is {}",marketName,surplus);
+
+        StringBuilder stringBuilder = new StringBuilder(marketName+"市场债务 :"+surplus+" "+coin(marketName)+" 明细 :\n");
+        for(SurplusDetail surplusDetail:surplusDetailList){
+          stringBuilder.append("NFT ID = "+surplusDetail.nftID+" ,债务 "+surplusDetail.surplus+" "+coin(marketName)+"\n");
+        }
+        qiPush(stringBuilder.toString());
       }
 
     }catch (Exception e){
@@ -158,9 +185,20 @@ public class MonitorTask {
         BigInteger currCBal = icerc20.balanceOf(marketAddr).send();
         BigInteger exRate = icerc20.exchangeRateStored().send();
 
-        log.info("Market {} total deposit value is {}",marketName,wmul(currCBal,exRate));
-        log.info("Market {} remote cash is {}",marketName,icerc20.getCash().send());
+        BigInteger totolDeposit = wmul(currCBal,exRate);
+        log.info("Market {} total deposit value is {}",marketName,totolDeposit);
+        BigInteger totolCash= icerc20.getCash().send();
+        log.info("Market {} remote cash is {}",marketName,totolCash);
+        String msg = marketName
+            +" 本平台存款量: "+smartDiv(marketName,totolDeposit).toPlainString()+" "+coin(marketName)
+            +" 第三方可取款量: "+smartDiv(marketName,totolCash).toPlainString()+" "+coin(marketName)+"\n";
+        if(totolCash.compareTo(totolDeposit)>=0){
+          msg += "无取款风险";
+        }else {
+          msg += "出现取款风险";
         }
+        qiPush(msg);
+      }
     }catch (Exception e){
       log.error("error in graph node",e);
     }
@@ -168,10 +206,57 @@ public class MonitorTask {
 
   }
 
+  private void setValue(String key,String value,boolean compare){
+    log.info("set {} value {}",key,value);
+    String valuePre = cacheMap.get(key);
+
+    if(valuePre==null){
+      qiPush(key+": "+value);
+      cacheMap.put(key,value);
+      return;
+    }
+    if(!valuePre.equals(value) ){
+      if(compare){
+        qiPush(key+": "+valuePre+" => "+value);
+      }else {
+        qiPush(key+": "+value);
+      }
+      cacheMap.put(key,value);
+    }
+  }
+  private String market(String msg){
+    return msg.split("-")[0];
+
+  }
+
+  private String coin(String msg){
+    return msg.split("-")[1];
+  }
+
+  private String qiPush(String msg){
+    String result ="FAILED";
+    try {
+      Map<String,Object> cube = new HashMap<>();
+      cube.put("msgtype","text");
+      Map<String,String> tent = new HashMap<>();
+      tent.put("content",msg);
+      cube.put("text",tent);
+      log.info("ready to push: \n{}",cube);
+      result = HttpHelper.post(baseConf.getQiPushAddr(),new JSONObject(cube).toJSONString());
+      log.info("push res:{}",result);
+      //sleep for 2s
+      Thread.sleep(2000);
+    } catch (Exception e) {
+      log.error("push to Q Error",e);
+    }
+    return result;
+  }
+
   private void compare(BigInteger fromNode,BigInteger fromGraph){
     long diff =  fromNode.subtract(fromGraph).longValue();
     if(diff>=10||diff<=-10){
       log.error("block from fullNode: {}, block from graph: {} ,diff {} !",fromNode,fromGraph,diff);
+      qiPush("Graph块高: "+ fromGraph+" FullNode块高: "+fromNode+" ,差距过大!");
     }else {
       log.info("block from fullNode: {}, block from graph: {} ,diff {} ",fromNode,fromGraph,diff);
     }
@@ -187,7 +272,14 @@ public class MonitorTask {
   }
 
   private static BigDecimal div18(BigInteger a){
-    return new BigDecimal(a).divide(BigDecimal.TEN.pow(18),18, RoundingMode.HALF_UP);
+    return new BigDecimal(a).divide(BigDecimal.TEN.pow(18),4, RoundingMode.HALF_UP);
+  }
+
+  private static BigDecimal smartDiv(String market,BigInteger a){
+    if(market.toLowerCase().contains("husd")){
+      return new BigDecimal(a).divide(BigDecimal.TEN.pow(8),4, RoundingMode.HALF_UP);
+    }
+    return new BigDecimal(a).divide(BigDecimal.TEN.pow(18),4, RoundingMode.HALF_UP);
   }
 
   private static BigInteger sum( LinkedHashMap<String,BigInteger> balanceMap ){
@@ -196,6 +288,12 @@ public class MonitorTask {
       sum = sum.add(balanceMap.get(key));
     }
     return sum;
+  }
+  @Data
+  @AllArgsConstructor
+  public static class SurplusDetail{
+    String nftID;
+    String surplus;
   }
 
 }

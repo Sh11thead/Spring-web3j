@@ -22,6 +22,9 @@ public class BaseConf {
   @Value("${graph.node}")
   private String graphNodeAddr;
 
+  @Value("${qi.push}")
+  private String qiPushAddr;
+
   @Value("${fix.pair.address}")
   private String fixPairAddress;
 
@@ -57,4 +60,5 @@ public class BaseConf {
     }
     return ret;
   }
+
 }
