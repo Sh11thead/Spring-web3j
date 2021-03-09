@@ -132,7 +132,7 @@ public class MonitorTask {
       Map<String,String> dInterestMap  = baseConf.getDInterestMap();
       for(String marketName:dInterestMap.keySet()){
         String address = dInterestMap.get(marketName);
-        result = HttpHelper.post(baseConf.getGraphNodeAddr(),GQL_DEPOSITS.replaceAll("DPOOLMARK",address));
+        result = HttpHelper.post(baseConf.getGraphNodeAddr(),GQL_DEPOSITS.replaceAll("DPOOLMARK",address.toLowerCase()));
         jsonObject = JSON.parseObject(result);
         String moneyMarketIncomeIndex = jsonObject.getJSONObject("data").getJSONObject("dpool").getString("moneyMarketIncomeIndex");
         JSONArray deposits = jsonObject.getJSONObject("data").getJSONObject("dpool").getJSONArray("deposits");
