@@ -9,6 +9,9 @@ import org.web3j.crypto.Credentials;
 import org.web3j.tx.gas.ContractGasProvider;
 import org.web3j.tx.gas.DefaultGasProvider;
 
+/**
+ * web3j  generate  truffle --truffle-json=/Users/juliankang/Documents/fixed-rate-protocol-contracts/artifacts/contracts/rewards/Rewards.sol/Rewards.json -o /Users/juliankang/Documents/Spring-web3j/src/main/java -p com.company.project.gen
+ */
 @Component
 @Data
 public class BaseConf {
