@@ -50,6 +50,8 @@ public class BaseConf {
   @Value("${fix.DInterests}")
   private String dInterests;
 
+  @Value("${defi.box}")
+  private String defiBox;
 
 
   public Map<String,String> getDInterestMap(){

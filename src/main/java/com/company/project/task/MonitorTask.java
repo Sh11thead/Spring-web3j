@@ -52,7 +52,7 @@ public class MonitorTask {
   }
 
 
-  @Scheduled(fixedDelayString="${monitor.delay}")//30min
+ // @Scheduled(fixedDelayString="${monitor.delay}")//30min
   public void monitor() {
 
     //blockNum
@@ -79,7 +79,7 @@ public class MonitorTask {
     try {
       UniswapPair uniswapPair = UniswapPair.load(baseConf.getFixPairAddress(),web3j,baseConf.me,baseConf.gasProvider);
       Tuple3<BigInteger, BigInteger, BigInteger> reserves = uniswapPair.getReserves().send();
-      BigDecimal price = div(reserves.component2(),reserves.component1());
+      BigDecimal price = div(reserves.component1(),reserves.component2());
       log.info("FIX price is {}",price);
       setValue("FIX价格",price.toPlainString(),true);
     } catch (Exception e) {
@@ -242,8 +242,8 @@ public class MonitorTask {
       tent.put("content",msg);
       cube.put("text",tent);
       log.info("ready to push: \n{}",cube);
-      result = HttpHelper.post(baseConf.getQiPushAddr(),new JSONObject(cube).toJSONString());
-      log.info("push res:{}",result);
+     // result = HttpHelper.post(baseConf.getQiPushAddr(),new JSONObject(cube).toJSONString());
+     // log.info("push res:{}",result);
       //sleep for 2s
       Thread.sleep(2000);
     } catch (Exception e) {
