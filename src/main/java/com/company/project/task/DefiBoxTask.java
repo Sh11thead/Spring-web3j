@@ -1,42 +1,23 @@
 package com.company.project.task;
 
-import static com.company.project.Web3JHelper.surPlusCal;
-import static com.company.project.configurer.BaseConf.GQL_BLOCK;
-import static com.company.project.configurer.BaseConf.GQL_DEPOSITS;
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.company.project.configurer.BaseConf;
 import com.company.project.configurer.HttpHelper;
-import com.company.project.configurer.Sha256;
-import com.company.project.gen.CompoundERC20Market;
-import com.company.project.gen.DInterest;
-import com.company.project.gen.ICERC20;
-import com.company.project.gen.UniswapPair;
 import com.google.common.base.Joiner;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.web3j.contracts.eip20.generated.ERC20;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.methods.response.EthBlockNumber;
-import org.web3j.tuples.generated.Tuple3;
 
 @Component
 @Slf4j
@@ -51,8 +32,8 @@ public class DefiBoxTask {
   public static final String PROJECT_COIN="/dgg/open/report/project/coin";
   public static final String PROJECT_POOL="/dgg/open/report/project/pool";
 
-  public static final String SECRETK="secretk";
-  public static final String ACCESSK="1234";
+  public static final String SECRETK = "p2TUh0D5Hw610CKgf77LFyUrusSk0Y2SPfnsvlNF";
+  public static final String ACCESSK = "fixedI5T0lAvB5lBEVG90";
 
 
   private String toJSONString(Object o){
@@ -110,7 +91,7 @@ public class DefiBoxTask {
     coinInfo.put("timestamp",System.currentTimeMillis());
     coinInfo.put("sign_version","1.0");
     coinInfo.put("chain","HECO");
-    coinInfo.put("name"," fixed.finance");
+    coinInfo.put("name", "FIX");
     coinInfo.put("address","0xde9495de889996404b14ddbf05f66db7401f0733");
     coinInfo.put("issue_amount","219339.2897");
     coinInfo.put("market_amount","194862.0908");
@@ -228,9 +209,8 @@ public class DefiBoxTask {
     }
     String tosign  = joiner.join(pairs);
     log.info("toSign: {}",tosign);
-    String sha256 = Sha256.getSHA256(tosign);
-    log.info("sha256: {}",sha256);
-    String base64 = Base64.getEncoder().encodeToString(sha256.getBytes());
+
+    String base64 = sha256(tosign);
     log.info("base64: {}",base64);
 
     source.put("signature",base64);
@@ -248,6 +228,24 @@ public class DefiBoxTask {
       log.error("push to Q Error",e);
     }
     return result;
+  }
+
+
+  public static String sha256(String src) {
+    try {
+      byte[] sha256 = MessageDigest.getInstance("SHA-256").digest(src.getBytes());
+      //  System.out.println(Arrays.toString(sha256));
+      return Base64.encodeBase64String(sha256);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  public static void main(String[] args) {
+    String a = "ok";
+    String sha256 = sha256(a);
+    log.info("sha256: {}", sha256);
+
   }
 
 
