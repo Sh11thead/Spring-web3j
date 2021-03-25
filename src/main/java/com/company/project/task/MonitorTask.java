@@ -267,7 +267,7 @@ public class MonitorTask {
     return a.multiply(b).divide(BigInteger.TEN.pow(18));
   }
 
-  private static BigDecimal div(BigInteger a,BigInteger b){
+  public static BigDecimal div(BigInteger a,BigInteger b){
     return new BigDecimal(a).divide(new BigDecimal(b),6, RoundingMode.HALF_UP);
   }
 

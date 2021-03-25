@@ -1,10 +1,15 @@
 package com.company.project.task;
 
+import static com.company.project.task.MonitorTask.div;
+
 import com.alibaba.fastjson.JSONObject;
 import com.company.project.configurer.BaseConf;
 import com.company.project.configurer.HttpHelper;
+import com.company.project.gen.Rewards;
+import com.company.project.gen.UniswapPair;
 import com.google.common.base.Joiner;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -18,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.web3j.protocol.Web3j;
+import org.web3j.tuples.generated.Tuple3;
 
 @Component
 @Slf4j
@@ -42,7 +48,32 @@ public class DefiBoxTask {
 
 
   @Scheduled(fixedDelayString="${defibox.delay}")//30min
-  public void monitor() {
+  public void monitor() throws Exception {
+
+    UniswapPair uniswapPair = UniswapPair.load(baseConf.getFixPairAddress(),web3j,baseConf.me,baseConf.gasProvider);
+    Tuple3<BigInteger, BigInteger, BigInteger> reserves = uniswapPair.getReserves().send();
+    BigInteger lpts = uniswapPair.totalSupply().send();
+    //component1 is usdt
+    BigDecimal price = div(reserves.component1(),reserves.component2());
+    log.info("FIX price is {}",price);
+    BigDecimal lpPrice = new BigDecimal(reserves.component1()).divide(new BigDecimal(lpts),2,RoundingMode.HALF_UP).multiply(new BigDecimal("2"));
+
+
+    //getPoolInfo
+    Rewards rewards = Rewards.load(baseConf.getFixLpRewardsPool(),web3j,BaseConf.me,BaseConf.gasProvider);
+    BigInteger rate = rewards.rewardRate().send();
+    //get1yearGain
+    BigDecimal yearGain= new BigDecimal(rate).multiply(new BigDecimal("31536000")).multiply(price).divide(BigDecimal.TEN.pow(18)).setScale(2,RoundingMode.HALF_UP);
+    //getTotalBal
+    BigInteger totalBal = rewards.totalSupply().send();
+    //getTotalBalValue
+    BigDecimal totalBalValue = new BigDecimal(totalBal).multiply(lpPrice).divide(BigDecimal.TEN.pow(18)).setScale(2,RoundingMode.HALF_UP);
+    BigDecimal apy2 = yearGain.divide(totalBalValue,4,RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
+
+    log.info("apy2 {}",apy2.toPlainString());
+
+
+
     /**
      * | 属性               | 数据类型 | 是否必填 | 说明                   |
      * | :----------------- | :------- | :------- | :--------------------- |
@@ -143,6 +174,8 @@ public class DefiBoxTask {
 
     log.info("ready to post: {}",toJSONString(poolInfo));
     push(poolInfo,PROJECT_POOL);
+
+
 
 
 
