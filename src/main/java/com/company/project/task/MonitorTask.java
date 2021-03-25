@@ -271,18 +271,18 @@ public class MonitorTask {
     return new BigDecimal(a).divide(new BigDecimal(b),6, RoundingMode.HALF_UP);
   }
 
-  private static BigDecimal div18(BigInteger a){
+  public static BigDecimal div18(BigInteger a){
     return new BigDecimal(a).divide(BigDecimal.TEN.pow(18),4, RoundingMode.HALF_UP);
   }
 
-  private static BigDecimal smartDiv(String market,BigInteger a){
+  public static BigDecimal smartDiv(String market,BigInteger a){
     if(market.toLowerCase().contains("husd")){
       return new BigDecimal(a).divide(BigDecimal.TEN.pow(8),4, RoundingMode.HALF_UP);
     }
     return new BigDecimal(a).divide(BigDecimal.TEN.pow(18),4, RoundingMode.HALF_UP);
   }
 
-  private static BigInteger sum( LinkedHashMap<String,BigInteger> balanceMap ){
+  public static BigInteger sum( LinkedHashMap<String,BigInteger> balanceMap ){
     BigInteger sum = new BigInteger("0");
     for(String key:balanceMap.keySet()){
       sum = sum.add(balanceMap.get(key));

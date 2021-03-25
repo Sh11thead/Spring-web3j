@@ -1,6 +1,8 @@
 package com.company.project.task;
 
 import static com.company.project.task.MonitorTask.div;
+import static com.company.project.task.MonitorTask.div18;
+import static com.company.project.task.MonitorTask.sum;
 
 import com.alibaba.fastjson.JSONObject;
 import com.company.project.configurer.BaseConf;
@@ -16,12 +18,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.web3j.contracts.eip20.generated.ERC20;
 import org.web3j.protocol.Web3j;
 import org.web3j.tuples.generated.Tuple3;
 
@@ -97,7 +101,7 @@ public class DefiBoxTask {
     tvlInfo.put("timestamp",System.currentTimeMillis());
     tvlInfo.put("sign_version","1.0");
     tvlInfo.put("chain","HECO");
-    tvlInfo.put("tvl","21190596");
+    tvlInfo.put("tvl","13657923");
     signature(tvlInfo,SECRETK);
 
     log.info("ready to post: {}",toJSONString(tvlInfo));
@@ -117,6 +121,34 @@ public class DefiBoxTask {
  * | market_amount | string   | N        | 流通量                 |
  * |               |          |          |                        |
  */
+    LinkedHashMap<String,BigInteger> balanceMap = new LinkedHashMap<>();
+    ERC20 fix = ERC20.load(baseConf.getFixAddress(),web3j,BaseConf.me,BaseConf.gasProvider);
+    BigInteger totalSupply = fix.totalSupply().send();
+    log.info("FIX totalSupply is {}",div18(totalSupply));
+    BigInteger fixInLP = fix.balanceOf(baseConf.getFixLpRewardsPool()).send();
+    balanceMap.put(baseConf.getFixLpRewardsPool(),fixInLP);
+    log.info("FIX in LP Pool {}",div18(fixInLP));
+
+    BigInteger fixInRewardsPool = fix.balanceOf(baseConf.getFixrewardsPool()).send();
+    balanceMap.put(baseConf.getFixrewardsPool(),fixInRewardsPool);
+    log.info("FIX in Rewards Pool {}",div18(fixInRewardsPool));
+
+    BigInteger fixInGovWallet = fix.balanceOf(baseConf.getFixGovWallet()).send();
+    balanceMap.put(baseConf.getFixGovWallet(),fixInGovWallet);
+    log.info("FIX in Gov Wallet {}",div18(fixInGovWallet));
+
+    BigInteger fixInDevWallet = fix.balanceOf(baseConf.getFixDevWallet()).send();
+    balanceMap.put(baseConf.getFixDevWallet(),fixInDevWallet);
+    log.info("FIX in Dev Wallet {}",div18(fixInDevWallet));
+
+
+    BigInteger fixInDevVesting = fix.balanceOf(baseConf.getFixVesting()).send();
+    balanceMap.put(baseConf.getFixVesting(),fixInDevVesting);
+    log.info("FIX in Vesting {}",div18(fixInDevVesting));
+
+    BigInteger totalLock = sum(balanceMap);
+    BigInteger totalCircle = totalSupply.subtract(totalLock);
+
     LinkedHashMap<String,Object> coinInfo = new LinkedHashMap<>();
     coinInfo.put("access_key",ACCESSK);
     coinInfo.put("timestamp",System.currentTimeMillis());
@@ -124,8 +156,8 @@ public class DefiBoxTask {
     coinInfo.put("chain","HECO");
     coinInfo.put("name", "FIX");
     coinInfo.put("address","0xde9495de889996404b14ddbf05f66db7401f0733");
-    coinInfo.put("issue_amount","219339.2897");
-    coinInfo.put("market_amount","194862.0908");
+    coinInfo.put("issue_amount",div18(totalSupply).toPlainString());
+    coinInfo.put("market_amount",div18(totalCircle).toPlainString());
 
     signature(coinInfo,SECRETK);
 
@@ -166,16 +198,16 @@ public class DefiBoxTask {
     poolInfo.put("type",3);
     poolInfo.put("address_pool",baseConf.getFixrewardsPool());
     poolInfo.put("address_token1","0xde9495de889996404b14ddbf05f66db7401f0733");
-    poolInfo.put("apy_year","279.6848");
-    poolInfo.put("apy_day",new BigDecimal(poolInfo.get("apy_year").toString()).divide(new BigDecimal("365"),2,RoundingMode.HALF_UP).toPlainString());
+    String apy = "197.55";
+    poolInfo.put("apy_year",revestAPY(apy));
+    poolInfo.put("reinvest_apy_year",revestDAPY(apy));
+    poolInfo.put("apy_day",new BigDecimal(apy).divide(new BigDecimal("365"),2,RoundingMode.HALF_UP).toPlainString());
     poolInfo.put("status",1);
 
     signature(poolInfo,SECRETK);
 
     log.info("ready to post: {}",toJSONString(poolInfo));
     push(poolInfo,PROJECT_POOL);
-
-
 
 
 
@@ -189,14 +221,37 @@ public class DefiBoxTask {
     poolInfo.put("address_pool",baseConf.getFixLpRewardsPool());
     poolInfo.put("address_token1","0xde9495de889996404b14ddbf05f66db7401f0733");
     poolInfo.put("address_token2","0xa71edc38d189767582c38a3145b5873052c3e47a");
-
-    poolInfo.put("apy_year","543.5526");
-    poolInfo.put("apy_day",new BigDecimal(poolInfo.get("apy_year").toString()).divide(new BigDecimal("365"),2,RoundingMode.HALF_UP).toPlainString());
+    apy = "470.55";
+    poolInfo.put("apy_year",revestAPY(apy));
+    poolInfo.put("reinvest_apy_year",revestDAPY(apy));
+    poolInfo.put("apy_day",new BigDecimal(apy).divide(new BigDecimal("365"),2,RoundingMode.HALF_UP).toPlainString());
     poolInfo.put("status",1);
 
     signature(poolInfo,SECRETK);
     log.info("ready to post: {}",toJSONString(poolInfo));
     push(poolInfo,PROJECT_POOL);
+
+    //all Pool
+
+    Map<String,String> dInterestMap  = baseConf.getDInterestMap();
+    for(String marketName:dInterestMap.keySet()){
+      poolInfo = new LinkedHashMap<>();
+      poolInfo.put("access_key",ACCESSK);
+      poolInfo.put("timestamp",System.currentTimeMillis());
+      poolInfo.put("sign_version","1.0");
+      poolInfo.put("chain","HECO");
+      poolInfo.put("pool",coin(marketName));
+      poolInfo.put("type",5);
+      poolInfo.put("address_pool",dInterestMap.get(marketName));
+      poolInfo.put("address_token1",coinAdr(marketName));
+      apy = baseConf.getAPYMap().get(marketName);
+      poolInfo.put("apy_year",apy);
+      poolInfo.put("status",1);
+      signature(poolInfo,SECRETK);
+      log.info("ready to post: {}",toJSONString(poolInfo));
+      push(poolInfo,PROJECT_POOL);
+    }
+
 
   }
 
@@ -255,12 +310,25 @@ public class DefiBoxTask {
     try {
       result = HttpHelper.post(baseConf.getDefiBox()+path,new JSONObject(source).toJSONString());
       log.info("push res:{}",result);
-      //sleep for 2s
-      Thread.sleep(2000);
+      //sleep for 10s
+      Thread.sleep(10000);
     } catch (Exception e) {
       log.error("push to Q Error",e);
     }
     return result;
+  }
+
+  public static String revestAPY(String apr){
+    BigDecimal oneplus = new BigDecimal(apr).divide(new BigDecimal("100")).divide(new BigDecimal("52"),18,RoundingMode.HALF_UP).add(BigDecimal.ONE);
+    BigDecimal res = oneplus.pow(52).subtract(BigDecimal.ONE).setScale(4,RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
+    return res.toPlainString();
+  }
+
+
+  public static String revestDAPY(String apr){
+    BigDecimal oneplus = new BigDecimal(apr).divide(new BigDecimal("100")).divide(new BigDecimal("365"),18,RoundingMode.HALF_UP).add(BigDecimal.ONE);
+    BigDecimal res = oneplus.pow(365).subtract(BigDecimal.ONE).setScale(4,RoundingMode.HALF_UP).multiply(new BigDecimal("100"));
+    return res.toPlainString();
   }
 
 
@@ -275,11 +343,15 @@ public class DefiBoxTask {
   }
 
   public static void main(String[] args) {
-    String a = "ok";
-    String sha256 = sha256(a);
-    log.info("sha256: {}", sha256);
-
+    log.info("{}",revestAPY("197.56"));
+    log.info("{}",revestDAPY("197.57"));
   }
 
+  private String coin(String msg){
+    return msg.split("-")[1];
+  }
 
+  private String coinAdr(String msg){
+    return baseConf.getAddressBySymbol(coin(msg));
+  }
 }
