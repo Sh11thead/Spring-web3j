@@ -72,7 +72,21 @@ public class DefiBoxTask {
 
     log.info("apy2 {}",apy2.toPlainString());
 
+    //getPoolInfo1
+    rewards = Rewards.load(baseConf.getFixrewardsPool(), web3j, BaseConf.me, BaseConf.gasProvider);
+    rate = rewards.rewardRate().send();
+    //get1yearGain
+    yearGain = new BigDecimal(rate).multiply(new BigDecimal("31536000"))
+        .divide(BigDecimal.TEN.pow(18)).setScale(2, RoundingMode.HALF_UP);
+    //getTotalBal
+    totalBal = rewards.totalSupply().send();
+    //getTotalBalValue
+    totalBalValue = new BigDecimal(totalBal).multiply(price).divide(BigDecimal.TEN.pow(18))
+        .setScale(2, RoundingMode.HALF_UP);
+    BigDecimal apy1 = yearGain.divide(totalBalValue, 4, RoundingMode.HALF_UP)
+        .multiply(new BigDecimal("100"));
 
+    log.info("apy1 {}", apy1.toPlainString());
 
     /**
      * | 属性               | 数据类型 | 是否必填 | 说明                   |
@@ -97,7 +111,7 @@ public class DefiBoxTask {
     tvlInfo.put("timestamp",System.currentTimeMillis());
     tvlInfo.put("sign_version","1.0");
     tvlInfo.put("chain","HECO");
-    tvlInfo.put("tvl","21190596");
+    tvlInfo.put("tvl", "13694597");
     signature(tvlInfo,SECRETK);
 
     log.info("ready to post: {}",toJSONString(tvlInfo));
@@ -122,7 +136,7 @@ public class DefiBoxTask {
     coinInfo.put("timestamp",System.currentTimeMillis());
     coinInfo.put("sign_version","1.0");
     coinInfo.put("chain","HECO");
-    coinInfo.put("name", "FIX");
+    coinInfo.put("name", "fixed.finance");
     coinInfo.put("address","0xde9495de889996404b14ddbf05f66db7401f0733");
     coinInfo.put("issue_amount","219339.2897");
     coinInfo.put("market_amount","194862.0908");
@@ -166,7 +180,7 @@ public class DefiBoxTask {
     poolInfo.put("type",3);
     poolInfo.put("address_pool",baseConf.getFixrewardsPool());
     poolInfo.put("address_token1","0xde9495de889996404b14ddbf05f66db7401f0733");
-    poolInfo.put("apy_year","279.6848");
+    poolInfo.put("apy_year", apy1.toPlainString());
     poolInfo.put("apy_day",new BigDecimal(poolInfo.get("apy_year").toString()).divide(new BigDecimal("365"),2,RoundingMode.HALF_UP).toPlainString());
     poolInfo.put("status",1);
 
@@ -190,7 +204,7 @@ public class DefiBoxTask {
     poolInfo.put("address_token1","0xde9495de889996404b14ddbf05f66db7401f0733");
     poolInfo.put("address_token2","0xa71edc38d189767582c38a3145b5873052c3e47a");
 
-    poolInfo.put("apy_year","543.5526");
+    poolInfo.put("apy_year", apy2.toPlainString());
     poolInfo.put("apy_day",new BigDecimal(poolInfo.get("apy_year").toString()).divide(new BigDecimal("365"),2,RoundingMode.HALF_UP).toPlainString());
     poolInfo.put("status",1);
 
